@@ -245,7 +245,7 @@ void setup_gpio() {
  *********************************************************************/
 void begin_tft() {
     tft.setRotation(bruceConfigPins.rotation); // sometimes it misses the first command
-    tft.invertDisplay(bruceConfig.colorInverted);
+    tft.invertDisplay(!bruceConfig.colorInverted);
     tft.setRotation(bruceConfigPins.rotation);
     tftWidth = tft.width();
 #ifdef HAS_TOUCH
