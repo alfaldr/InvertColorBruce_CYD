@@ -183,8 +183,8 @@ volatile int tftHeight = VECTOR_DISPLAY_DEFAULT_WIDTH;
 #include <Wire.h>
 
 /*********************************************************************
- **  Function: begin_storage
- **  Config LittleFS and SD storage
+ ** Function: begin_storage
+ ** Config LittleFS and SD storage
  *********************************************************************/
 void begin_storage() {
     if (!setupLittleFS()) {
@@ -198,30 +198,30 @@ void begin_storage() {
 }
 
 /*********************************************************************
- **  Function: _setup_gpio()
- **  Sets up a weak (empty) function to be replaced by /ports/* /interface.h
+ ** Function: _setup_gpio()
+ ** Sets up a weak (empty) function to be replaced by /ports/* /interface.h
  *********************************************************************/
 void _setup_gpio() __attribute__((weak));
 void _setup_gpio() {}
 
 /*********************************************************************
- **  Function: _post_setup_gpio()
- **  Sets up a weak (empty) function to be replaced by /ports/* /interface.h
+ ** Function: _post_setup_gpio()
+ ** Sets up a weak (empty) function to be replaced by /ports/* /interface.h
  *********************************************************************/
 void _post_setup_gpio() __attribute__((weak));
 void _post_setup_gpio() {}
 
 /*********************************************************************
- **  Function: _pre_storage_gpio()
- **  Sets up a weak (empty) function for board fixes that must run
- **  after the first TFT access and before storage is mounted.
+ ** Function: _pre_storage_gpio()
+ ** Sets up a weak (empty) function for board fixes that must run
+ ** after the first TFT access and before storage is mounted.
  *********************************************************************/
 void _pre_storage_gpio() __attribute__((weak));
 void _pre_storage_gpio() {}
 
 /*********************************************************************
- **  Function: setup_gpio
- **  Setup GPIO pins
+ ** Function: setup_gpio
+ ** Setup GPIO pins
  *********************************************************************/
 void setup_gpio() {
 
@@ -240,134 +240,78 @@ void setup_gpio() {
 }
 
 /*********************************************************************
- **  Function: begin_tft
- **  Config tft
+ ** Function: begin_tft
+ ** Config tft
  *********************************************************************/
 void begin_tft() {
     tft.setRotation(bruceConfigPins.rotation); // sometimes it misses the first command
-    tft.invertDisplay(!bruceConfig.colorInverted);
+    tft.invertDisplay(false);                  // CYD paneli için renk tersliğini kalıcı düzeltir
     tft.setRotation(bruceConfigPins.rotation);
     tftWidth = tft.width();
 #ifdef HAS_TOUCH
-    tftHeight = tft.height() - 20;
+    tftHeight = tft.height() - 20; // 20px to draw the TouchFooter(), were the btns are being read in touch devices.
 #else
     tftHeight = tft.height();
 #endif
     resetTftDisplay();
+    tft.invertDisplay(false);                  // resetTftDisplay sonrası renk durumunu korur
     setBrightness(bruceConfig.bright, false);
 }
 
 /*********************************************************************
- **  Function: boot_screen
- **  Draw boot screen
+ ** Function: boot_screen
+ ** Draw boot screen (Devre dışı bırakıldı)
  *********************************************************************/
 void boot_screen() {
-    tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
-    tft.setTextSize(FM);
-    tft.drawPixel(0, 0, bruceConfig.bgColor);
-    tft.drawCentreString("Bruce", tftWidth / 2, 10, 1);
-    tft.setTextSize(FP);
-    tft.drawCentreString(BRUCE_VERSION, tftWidth / 2, 25, 1);
-    tft.setTextSize(FM);
-    tft.drawCentreString(
-        "PREDATORY FIRMWARE", tftWidth / 2, tftHeight + 2, 1
-    ); // will draw outside the screen on non touch devices
+    // Bruce varsayılan açılış yazıları kaldırıldı
 }
 
 /*********************************************************************
- **  Function: boot_screen_anim
- **  Draw boot screen
+ ** Function: boot_screen_anim
+ ** Doğrudan boot.gif dosyasını oynatır
  *********************************************************************/
 void boot_screen_anim() {
-    boot_screen();
-    int i = millis();
-    // checks for boot.jpg in SD and LittleFS for customization
     int boot_img = 0;
-    bool drawn = false;
     if (sdcardMounted) {
-        if (SD.exists("/boot.jpg")) boot_img = 1;
-        else if (SD.exists("/boot.gif")) boot_img = 3;
+        if (SD.exists("/boot.gif")) boot_img = 3;
+        else if (SD.exists("/boot.jpg")) boot_img = 1;
     }
-    if (boot_img == 0 && LittleFS.exists("/boot.jpg")) boot_img = 2;
-    else if (boot_img == 0 && LittleFS.exists("/boot.gif")) boot_img = 4;
-    if (bruceConfig.theme.boot_img) boot_img = 5; // override others
+    if (boot_img == 0) {
+        if (LittleFS.exists("/boot.gif")) boot_img = 4;
+        else if (LittleFS.exists("/boot.jpg")) boot_img = 2;
+    }
+    if (bruceConfig.theme.boot_img) boot_img = 5;
 
-    tft.drawPixel(0, 0, 0);       // Forces back communication with TFT, to avoid ghosting
-                                  // Start image loop
-    while (millis() < i + 7000) { // boot image lasts for 5 secs
-        if ((millis() - i > 2000) && !drawn) {
-            tft.fillRect(0, 45, tftWidth, tftHeight - 45, bruceConfig.bgColor);
-            if (boot_img > 0 && !drawn) {
-                tft.fillScreen(bruceConfig.bgColor);
-                if (boot_img == 5) {
-                    drawImg(
-                        *bruceConfig.themeFS(),
-                        bruceConfig.getThemeItemImg(bruceConfig.theme.paths.boot_img),
-                        0,
-                        0,
-                        true,
-                        3600
-                    );
-                    Serial.println("Image from SD theme");
-                } else if (boot_img == 1) {
-                    drawImg(SD, "/boot.jpg", 0, 0, true);
-                    Serial.println("Image from SD");
-                } else if (boot_img == 2) {
-                    drawImg(LittleFS, "/boot.jpg", 0, 0, true);
-                    Serial.println("Image from LittleFS");
-                } else if (boot_img == 3) {
-                    drawImg(SD, "/boot.gif", 0, 0, true, 3600);
-                    Serial.println("Image from SD");
-                } else if (boot_img == 4) {
-                    drawImg(LittleFS, "/boot.gif", 0, 0, true, 3600);
-                    Serial.println("Image from LittleFS");
-                }
-                tft.drawPixel(0, 0, 0); // Forces back communication with TFT, to avoid ghosting
-            }
-            drawn = true;
-        }
-#if !defined(LITE_VERSION)
-        if (!boot_img && (millis() - i > 2200) && (millis() - i) < 2700)
-            tft.drawRect(2 * tftWidth / 3, tftHeight / 2, 2, 2, bruceConfig.priColor);
-        if (!boot_img && (millis() - i > 2700) && (millis() - i) < 2900)
-            tft.fillRect(0, 45, tftWidth, tftHeight - 45, bruceConfig.bgColor);
-        if (!boot_img && (millis() - i > 2900) && (millis() - i) < 3400)
-            tft.drawXBitmap(
-                2 * tftWidth / 3 - 30,
-                5 + tftHeight / 2,
-                bruce_small_bits,
-                bruce_small_width,
-                bruce_small_height,
-                bruceConfig.bgColor,
-                bruceConfig.priColor
+    tft.fillScreen(bruceConfig.bgColor);
+
+    if (boot_img > 0) {
+        if (boot_img == 5) {
+            drawImg(
+                *bruceConfig.themeFS(),
+                bruceConfig.getThemeItemImg(bruceConfig.theme.paths.boot_img),
+                0,
+                0,
+                true,
+                3600
             );
-        if (!boot_img && (millis() - i > 3400) && (millis() - i) < 3600) tft.fillScreen(bruceConfig.bgColor);
-        if (!boot_img && (millis() - i > 3600))
-            tft.drawXBitmap(
-                (tftWidth - 238) / 2,
-                (tftHeight - 133) / 2,
-                bits,
-                bits_width,
-                bits_height,
-                bruceConfig.bgColor,
-                bruceConfig.priColor
-            );
-#endif
-        if (check(AnyKeyPress)) // If any key or M5 key is pressed, it'll jump the boot screen
-        {
-            tft.fillScreen(bruceConfig.bgColor);
-            delay(10);
-            return;
+        } else if (boot_img == 3) {
+            drawImg(SD, "/boot.gif", 0, 0, true, 3600);
+        } else if (boot_img == 4) {
+            drawImg(LittleFS, "/boot.gif", 0, 0, true, 3600);
+        } else if (boot_img == 1) {
+            drawImg(SD, "/boot.jpg", 0, 0, true);
+        } else if (boot_img == 2) {
+            drawImg(LittleFS, "/boot.jpg", 0, 0, true);
         }
+        tft.drawPixel(0, 0, 0); // Ghosting önleme
     }
 
-    // Clear splashscreen
     tft.fillScreen(bruceConfig.bgColor);
 }
 
 /*********************************************************************
- **  Function: init_clock
- **  Clock initialisation for propper display in menu
+ ** Function: init_clock
+ ** Clock initialisation for propper display in menu
  *********************************************************************/
 void init_clock() {
 #if defined(HAS_RTC)
@@ -406,8 +350,8 @@ void init_clock() {
 }
 
 /*********************************************************************
- **  Function: init_led
- **  Led initialisation
+ ** Function: init_led
+ ** Led initialisation
  *********************************************************************/
 void init_led() {
 #ifdef HAS_RGB_LED
@@ -416,8 +360,8 @@ void init_led() {
 }
 
 /*********************************************************************
- **  Function: startup_sound
- **  Play sound or tone depending on device hardware
+ ** Function: startup_sound
+ ** Play sound or tone depending on device hardware
  *********************************************************************/
 void startup_sound() {
     if (bruceConfig.soundEnabled == 0) return; // if sound is disabled, do not play sound
@@ -442,8 +386,8 @@ void startup_sound() {
 }
 
 /*********************************************************************
- **  Function: setup
- **  Where the devices are started and variables set
+ ** Function: setup
+ ** Where the devices are started and variables set
  *********************************************************************/
 void setup() {
     Serial.setRxBufferSize(
@@ -480,12 +424,10 @@ void setup() {
     setup_gpio();
 #if defined(HAS_SCREEN)
     tft.init();
+    tft.invertDisplay(false); // CYD ilk panel başlangıcında ters renkleri engelle
     tft.setRotation(bruceConfigPins.rotation);
     tft.fillScreen(TFT_BLACK);
-    // bruceConfig is not read yet.. just to show something on screen due to long boot time
-    tft.setTextColor(TFT_PURPLE, TFT_BLACK);
-    tft.drawCentreString("Booting", tft.width() / 2, tft.height() / 2, 1);
-    RAM_LOG("first-display-elem"); // first element drawn on screen
+    RAM_LOG("first-display-elem");
 #else
     tft.begin();
 #endif
@@ -568,6 +510,7 @@ void setup() {
     startSerialCommandsHandlerTask(true);
 
     wakeUpScreen();
+    tft.invertDisplay(false); // Ekran uyandıktan sonra renklerin ters dönmesini kesin engelle
     if (bruceConfig.startupApp != "" && !startupApp.startApp(bruceConfig.startupApp)) {
         bruceConfig.setStartupApp("");
     }
@@ -576,8 +519,8 @@ void setup() {
 }
 
 /**********************************************************************
- **  Function: loop
- **  Main loop
+ ** Function: loop
+ ** Main loop
  **********************************************************************/
 #if defined(HAS_SCREEN)
 void loop() {
