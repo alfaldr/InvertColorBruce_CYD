@@ -245,7 +245,7 @@ void setup_gpio() {
  *********************************************************************/
 void begin_tft() {
     tft.setRotation(bruceConfigPins.rotation); // sometimes it misses the first command
-    tft.invertDisplay(false);                  // CYD paneli için renk tersliğini kalıcı düzeltir
+    tft.invertDisplay(false);                  // Menü renklerini CYD için düzeltir
     tft.setRotation(bruceConfigPins.rotation);
     tftWidth = tft.width();
 #ifdef HAS_TOUCH
@@ -254,7 +254,7 @@ void begin_tft() {
     tftHeight = tft.height();
 #endif
     resetTftDisplay();
-    tft.invertDisplay(false);                  // resetTftDisplay sonrası renk durumunu korur
+    tft.invertDisplay(false);
     setBrightness(bruceConfig.bright, false);
 }
 
@@ -263,12 +263,12 @@ void begin_tft() {
  ** Draw boot screen (Devre dışı bırakıldı)
  *********************************************************************/
 void boot_screen() {
-    // Bruce varsayılan açılış yazıları kaldırıldı
+    // Varsayılan metin ekranı devre dışı
 }
 
 /*********************************************************************
  ** Function: boot_screen_anim
- ** Doğrudan boot.gif dosyasını oynatır
+ ** boot.gif dosyasını doğru renk modunda oynatır
  *********************************************************************/
 void boot_screen_anim() {
     int boot_img = 0;
@@ -282,9 +282,11 @@ void boot_screen_anim() {
     }
     if (bruceConfig.theme.boot_img) boot_img = 5;
 
-    tft.fillScreen(bruceConfig.bgColor);
-
     if (boot_img > 0) {
+        // GIF dekoderi için ekranı geçici olarak doğru renk moduna al
+        tft.invertDisplay(true);
+        tft.fillScreen(TFT_BLACK);
+
         if (boot_img == 5) {
             drawImg(
                 *bruceConfig.themeFS(),
@@ -304,6 +306,9 @@ void boot_screen_anim() {
             drawImg(LittleFS, "/boot.jpg", 0, 0, true);
         }
         tft.drawPixel(0, 0, 0); // Ghosting önleme
+
+        // GIF bittiğinde menü için ekran renk modunu geri yükle
+        tft.invertDisplay(false);
     }
 
     tft.fillScreen(bruceConfig.bgColor);
@@ -424,7 +429,7 @@ void setup() {
     setup_gpio();
 #if defined(HAS_SCREEN)
     tft.init();
-    tft.invertDisplay(false); // CYD ilk panel başlangıcında ters renkleri engelle
+    tft.invertDisplay(false);
     tft.setRotation(bruceConfigPins.rotation);
     tft.fillScreen(TFT_BLACK);
     RAM_LOG("first-display-elem");
@@ -510,7 +515,7 @@ void setup() {
     startSerialCommandsHandlerTask(true);
 
     wakeUpScreen();
-    tft.invertDisplay(false); // Ekran uyandıktan sonra renklerin ters dönmesini kesin engelle
+    tft.invertDisplay(false); // Menüye geçmeden önce doğru renk durumunu sabitle
     if (bruceConfig.startupApp != "" && !startupApp.startApp(bruceConfig.startupApp)) {
         bruceConfig.setStartupApp("");
     }
